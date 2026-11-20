@@ -1,6 +1,8 @@
-﻿namespace ShiritoriConsoleApp.Gemini
+﻿using ShiritoriConsoleApp.Models;
+
+namespace ShiritoriConsoleApp.Gemini
 {
-    internal interface IGeminiService
+    public interface IGeminiService
     {
         Task<string> AskAsync(string prompt);
     }

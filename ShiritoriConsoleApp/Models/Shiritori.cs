@@ -24,7 +24,7 @@ namespace ShiritoriConsoleApp.Models
             get 
             {
                 if (History.Count == 0) return null;
-                string word = History.LastTurn.Word;
+                string word = History.LastTurn!.Word;
                 return word[word.Length - 1];
             }
         }
@@ -32,93 +32,12 @@ namespace ShiritoriConsoleApp.Models
         public GeminiProtocol Protocol { get;}
         private IGeminiService service;
 
-
-        public bool IsLowercaseEnglish(string? word) 
+        public void NewGame()
         {
-            if (string.IsNullOrWhiteSpace(word))
-            {
-                return false;
-            }
-
-            for (int i = 0; i < word.Length; i++)
-            {
-                char c = word[i];
-                if (c < 'a' || c > 'z')
-                {
-                    return false;
-                }
-            }
-            return true;
+            History.Clear();
+            State = GameState.InProgress;
         }
 
-        private bool CorrectedWordCheck(string? correctedWord)
-        {
-            if (correctedWord == null)
-            {
-                return false;
-            }
-
-            string normalizedC = correctedWord.Trim().ToLowerInvariant();
-
-            // Must contain only English letters and not be empty
-            if (!IsLowercaseEnglish(normalizedC))
-            {
-                return false;
-            }
-
-            // The corrected word cannot have been played before
-            if (History.Contains(normalizedC))
-            {
-                return false;
-            }
-
-            // Must start with the required letter, if there is one
-            if (RequiredLetter != null && normalizedC[0] != RequiredLetter)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        private bool GeminiWordCheck(string? correctedWord, string? replyWord)
-        {
-            if (correctedWord == null || replyWord == null)
-            {
-                return false;
-            }
-
-            string normalizedC = correctedWord.Trim().ToLowerInvariant();
-            string normalizedR = replyWord.Trim().ToLowerInvariant();
-
-            // Both words must contain English letters and not be empty
-            if (!IsLowercaseEnglish(normalizedC) ||
-                !IsLowercaseEnglish(normalizedR))
-            {
-                return false;
-            }
-
-            // Gemini cannot repeat the player's corrected word
-            if (normalizedC == normalizedR)
-            {
-                return false;
-            }
-
-            // Gemini cannot use a word that was already played
-            if (History.Contains(normalizedR))
-            {
-                return false;
-            }
-
-            // Gemini's word must start with the last letter
-            // of the player's corrected word
-            if (normalizedR[0] != normalizedC[normalizedC.Length - 1])
-            {
-                return false;
-            }
-
-            return true;
-        }
 
         public async Task<MoveResult> PlayAsync(string playerWord)
         {
@@ -154,7 +73,11 @@ namespace ShiritoriConsoleApp.Models
             string? acceptedWord = null;    
             for (int i = 0; i < 3; i++)
             {
+                Console.WriteLine();
+                Console.WriteLine("Waiting for Gemini's response...");
+
                 string responseText = await service.AskAsync(prompt);
+
                 GeminiReply reply = Protocol.ParseReply(responseText);
 
                 if (reply.Status == ReplyStatus.NotAWord)
@@ -250,6 +173,94 @@ namespace ShiritoriConsoleApp.Models
             outcome = MoveOutcome.PlayerWins;
 
             return new MoveResult(outcome, playerWinningTurn, null);
+        }
+
+        //Helpers:
+        public bool IsLowercaseEnglish(string? word)
+        {
+            if (string.IsNullOrWhiteSpace(word))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < word.Length; i++)
+            {
+                char c = word[i];
+                if (c < 'a' || c > 'z')
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private bool CorrectedWordCheck(string? correctedWord)
+        {
+            if (correctedWord == null)
+            {
+                return false;
+            }
+
+            string normalizedC = correctedWord.Trim().ToLowerInvariant();
+
+            // Must contain only English letters and not be empty
+            if (!IsLowercaseEnglish(normalizedC))
+            {
+                return false;
+            }
+
+            // The corrected word cannot have been played before
+            if (History.Contains(normalizedC))
+            {
+                return false;
+            }
+
+            // Must start with the required letter, if there is one
+            if (RequiredLetter != null && normalizedC[0] != RequiredLetter)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool GeminiWordCheck(string? correctedWord, string? replyWord)
+        {
+            if (correctedWord == null || replyWord == null)
+            {
+                return false;
+            }
+
+            string normalizedC = correctedWord.Trim().ToLowerInvariant();
+            string normalizedR = replyWord.Trim().ToLowerInvariant();
+
+            // Both words must contain English letters and not be empty
+            if (!IsLowercaseEnglish(normalizedC) ||
+                !IsLowercaseEnglish(normalizedR))
+            {
+                return false;
+            }
+
+            // Gemini cannot repeat the player's corrected word
+            if (normalizedC == normalizedR)
+            {
+                return false;
+            }
+
+            // Gemini cannot use a word that was already played
+            if (History.Contains(normalizedR))
+            {
+                return false;
+            }
+
+            // Gemini's word must start with the last letter
+            // of the player's corrected word
+            if (normalizedR[0] != normalizedC[normalizedC.Length - 1])
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
